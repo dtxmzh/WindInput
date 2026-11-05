@@ -92,6 +92,9 @@ impl FormatKind {
             Self::Date | Self::MonthDay => {
                 common_year
                     || matches!(name, "M" | "MM" | "MC" | "D" | "DD" | "DC")
+                    // 星期字需要确定的公历日，故与农历一样**不给 YearMonth**：
+                    // 只年月推不出唯一星期（同月每月 1 号的星期都不同）。
+                    || matches!(name, "WC")
                     || crate::lunar::is_var(name)
             }
             Self::YearMonth => common_year || matches!(name, "M" | "MM" | "MC"),
@@ -119,6 +122,7 @@ impl FormatKind {
         const MONTH: &[(&str, &str)] =
             &[("M", "月，3"), ("MM", "两位月，03"), ("MC", "汉字月，三")];
         const DAY: &[(&str, &str)] = &[("D", "日，5"), ("DD", "两位日，05"), ("DC", "汉字日，五")];
+        const WCN: (&str, &str) = ("WC", "星期用汉字，五（配「星期/周」写）");
         const LUNAR: &[(&str, &str)] = &[
             ("LY", "农历干支年，丙午"),
             ("LYN", "农历年数字，2026（以正月初一为界，可能与公历差 1）"),
@@ -131,7 +135,7 @@ impl FormatKind {
         // 拼接结果必须是 `'static`，故各类各写一份完整的常量（拼接要分配）。
         const DATE_ALL: &[(&str, &str)] = &[
             YEAR[0], YEAR[1], YEAR[2], YEAR[3], MONTH[0], MONTH[1], MONTH[2], DAY[0], DAY[1],
-            DAY[2], LUNAR[0], LUNAR[1], LUNAR[2], LUNAR[3], LUNAR[4], LUNAR[5], LUNAR[6],
+            DAY[2], WCN, LUNAR[0], LUNAR[1], LUNAR[2], LUNAR[3], LUNAR[4], LUNAR[5], LUNAR[6],
         ];
         const YEAR_MONTH_ALL: &[(&str, &str)] = &[
             YEAR[0], YEAR[1], YEAR[2], YEAR[3], MONTH[0], MONTH[1], MONTH[2],
@@ -1537,8 +1541,8 @@ text = "$RESULT"
     #[test]
     fn var_hint_counts_are_pinned() {
         let n = |k: FormatKind| k.var_hints().len();
-        assert_eq!(n(FormatKind::Date), 17, "公历 10 + 农历 7");
-        assert_eq!(n(FormatKind::MonthDay), 17, "与 date 同一套");
+        assert_eq!(n(FormatKind::Date), 18, "公历 10 + 星期 1 + 农历 7");
+        assert_eq!(n(FormatKind::MonthDay), 18, "与 date 同一套");
         assert_eq!(n(FormatKind::YearMonth), 7, "无 $D 系列、无农历");
         assert_eq!(n(FormatKind::Number), 6);
         assert_eq!(n(FormatKind::Calc), 3);

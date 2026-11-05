@@ -8,6 +8,8 @@
 //! 日期类变量名与 `system.phrases.toml` 同名同义（`$Y` `$MM` `$YC` …），差别只在数据源：
 //! 短语层绑当前时间，这里绑用户打进去的数字。
 
+use chrono::Datelike;
+
 use crate::{
     FormatKind, decimal_to_amount, decimal_to_chinese_text, digits_to_chinese_chars,
     format_thousands, number_to_amount, small_int_to_chinese, split_decimal, year_to_chinese,
@@ -121,6 +123,16 @@ pub(crate) fn date_var(name: &str, y: i32, m: u32, d: u32) -> Option<String> {
         "D" => d.to_string(),
         "DD" => format!("{:02}", d),
         "DC" => small_int_to_chinese(d),
+        // 星期汉字（单字，配「星期/周」用）：与短语层 `$WC` 同名同义——那边绑当前时间，
+        // 这里绑用户打进的日期。非法公历日没有星期 → `None` 整条作废，与农历变量同一
+        // 口径（见 `unconvertible_dates_kill_the_template`）；有效日期的星期恒存在，
+        // `$WC` 没有 `$LF` 那种「当天没有」的空串态。
+        "WC" => {
+            let Some(dt) = chrono::NaiveDate::from_ymd_opt(y, m, d) else {
+                return None;
+            };
+            crate::WEEKDAY_CN[dt.weekday().num_days_from_sunday() as usize].to_string()
+        }
         _ => return None,
     })
 }
@@ -238,6 +250,25 @@ mod tests {
         assert_eq!(date_var("MC", 2026, 12, 4).unwrap(), "十二");
         assert_eq!(date_var("DC", 2026, 12, 25).unwrap(), "二十五");
         assert_eq!(date_var("YC", 2005, 1, 1).unwrap(), "二〇〇五");
+    }
+
+    /// 星期汉字：单字、周日起表（与短语层 `$WC` 同一张 `WEEKDAY_CN`）。
+    #[test]
+    fn weekday_char() {
+        assert_eq!(date_var("WC", 2026, 11, 6).unwrap(), "五"); // 周五
+        assert_eq!(date_var("WC", 2026, 11, 1).unwrap(), "日"); // 周日
+        assert_eq!(date_var("WC", 2026, 11, 7).unwrap(), "六"); // 周六
+    }
+
+    /// ★ 星期依赖确定公历日：非法日期 → `None` 整条作废（农历同口径）；
+    /// 年月类推不出唯一星期，`YearMonth` 两侧都不放行。
+    #[test]
+    fn weekday_needs_a_full_valid_date() {
+        assert!(date_var("WC", 2026, 2, 31).is_none());
+        assert!(year_month_var("WC", 2026, 11).is_none());
+        assert!(!FormatKind::YearMonth.supports_var("WC"));
+        assert!(FormatKind::Date.supports_var("WC"));
+        assert!(FormatKind::MonthDay.supports_var("WC"));
     }
 
     #[test]

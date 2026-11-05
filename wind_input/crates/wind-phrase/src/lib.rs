@@ -963,7 +963,8 @@ pub fn expand_template(text: &str, now: &DateTime<Local>) -> Option<String> {
     wind_quick_input::template::expand(text, |name| expand_var(name, now))
 }
 
-const WEEKDAY_CN: [&str; 7] = ["日", "一", "二", "三", "四", "五", "六"];
+// 星期汉字 `$WC` 与快捷输入格式表共用一份实现（见 [`wind_quick_input::WEEKDAY_CN`]）：
+// 同一个写法在两处取值不同，用户把模板从一个配置抄进另一个就中招。
 
 /// 展开单个变量；不支持的返回 None。
 fn expand_var(name: &str, now: &DateTime<Local>) -> Option<String> {
@@ -983,7 +984,8 @@ fn expand_var(name: &str, now: &DateTime<Local>) -> Option<String> {
         "HH" => format!("{:02}", now.hour()),
         "mm" => format!("{:02}", now.minute()),
         "ss" => format!("{:02}", now.second()),
-        "WC" => WEEKDAY_CN[now.weekday().num_days_from_sunday() as usize].to_string(),
+        "WC" => wind_quick_input::WEEKDAY_CN[now.weekday().num_days_from_sunday() as usize]
+            .to_string(),
         // 中文数字读法与快捷输入的日期候选共用一份实现（`wind-quick-input`）：
         // 同一个「二〇二六年六月十四日」在两处取值不同，用户无从分辨谁对。
         "YC" => wind_quick_input::year_to_chinese(now.year()),
@@ -1305,7 +1307,7 @@ mod tests {
             m: 6,
             d: 14,
         };
-        for name in ["Y", "YYYY", "YY", "YC", "M", "MM", "MC", "D", "DD", "DC"] {
+        for name in ["Y", "YYYY", "YY", "YC", "M", "MM", "MC", "D", "DD", "DC", "WC"] {
             assert_eq!(
                 expand_var(name, &now),
                 quick.get(name),
