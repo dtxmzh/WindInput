@@ -27,6 +27,22 @@
 
 ---
 
+## 2026-11-05 · 快捷输入格式表支持 `$WC` 星期字（0.131）
+
+- 合入：WindInput（本提交）；范围：快捷输入的 date / month_day 格式条目
+- 变化：格式表模板此前不认 `$WC`——把它从 system.phrases.toml 的「星期$WC」
+  抄进 system.quick.toml 会命中未知变量、整条候选静默作废；后 date /
+  month_day 模板可用 `$WC`（绑用户打进的日期：`2026.11.5.` 的自定义条目可出
+  「2026年11月5日星期三」；短语层的 `$WC` 绑今天，两层共用同一张 WEEKDAY_CN 表）。
+  **出厂格式表未新增条目，默认候选一条不多一条不少**，用户在自定义模板里
+  写 `$WC` 才可见新候选。
+- 触发条件：date / month_day 模板写入 `$WC`（出厂条目不改，默认行为零变化）
+- 回退旧行为：无（纯增量）；删掉自定义条目里的 `$WC` 即恢复
+- 钉住的测试：`wind-quick-input/src/vars.rs::tests::weekday_char`、
+  `weekday_needs_a_full_valid_date`、`vars_match_whitelist`；
+  `wind-phrase/src/lib.rs` 短语与格式表 `$WC` 同名同义比对
+- 来源：内部
+
 ## 2026-11-04 · `$SS`/`$AA` 重码折叠只认同码精确候选，拼音域普通候选恒让位（0.131）
 
 - 合入：92fa87c2；范围：全拼 / 双拼 / 混输主路径（码表方案不变）
